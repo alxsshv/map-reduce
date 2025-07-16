@@ -13,43 +13,46 @@ import java.util.stream.Collectors;
 
 
 /**
+ * Класс выполняющий алгоритм полученных задач в отдельном потоке.
  * @author Alexei Shvariov
  */
 @Slf4j
 public class Worker implements Callable<Boolean> {
-    /***/
+    /**Числовой идентификатор */
     private final int id;
-    /***/
+    /** Провайдер для взаимодействия с хранилищем файлов */
     private final StorageProvider storageProvider;
-    /***/
+    /** Координатор, который создал процесс-worker */
     private final Coordinator coordinator;
 
-    /***/
+    /** Конструктор с параметрами
+     * @param coordinator - Координатор, который создал экземпляр worker'а.
+     * @param id - идентификатор worker'а.
+     * */
     public Worker(Coordinator coordinator, int id) {
         this.coordinator = coordinator;
         this.id = id;
         this.storageProvider = new StorageProvider();
     }
 
-    /***/
+    /** Метод, выполняющийся при запуске worker'a в пуле потоков
+     * Метод запрашивает задачи в координаторе и в зависимости от типа полученной задачи выполняет map-задачу,
+     * reduce-задачу, ожидает новой задачи или завершает работу
+     * @return возвращает true, если поток успешно завершил все операции*/
     @Override
     public Boolean call() {
         log.info("Запущен worker № {}", id);
         while (true) {
             log.info("Worker {}: запросил задачу", id);
             Task task = coordinator.getTask();
-            if (task == null) {
+            if (task == null  || task instanceof WaitTask) {
+                log.info("Worker {}: ожидаю", id);
                 Thread.yield();
                 continue;
             }
             if (task instanceof StopTask) {
                 log.info("Worker {}: завершил работу", id);
                 break;
-            }
-            if (task instanceof WaitTask) {
-                log.info("Worker {}: ожидаю", id);
-                Thread.yield();
-                continue;
             }
             if (task instanceof MapTask mapTask) {
                 log.info("Worker {}: выполняю map задачу № {}", id, mapTask.id());
@@ -76,7 +79,10 @@ public class Worker implements Callable<Boolean> {
         return true;
     }
 
-    /***/
+    /** Метод считывает содержимое файла в виде строки, делит на слова и собирает в список {@link KeyValue} объектов
+     *  для дальнейшего сохранения в промежуточный файл
+     *  @param content - содержимое одного из файлов, в которых необходимо определить сколько раз встречается слово.
+     *  @return возвращает список {@link KeyValue} */
     public List<KeyValue> map (String content) {
         return Arrays.stream(content.split(" "))
                 .map(word -> word.replaceAll("[^a-zA-Zа-яА-Я0-9-]", ""))
@@ -85,10 +91,9 @@ public class Worker implements Callable<Boolean> {
     }
 
 
-    /***/
+    /** Подсчитывает сколько раз стречается слово ключ в тексте и схораняет в {@link KeyResult} объект. */
     public KeyResult reduce(String key, List<KeyValue> values) {
         return new KeyResult(key, values.size());
     }
-
 
 }

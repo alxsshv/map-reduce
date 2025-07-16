@@ -3,6 +3,7 @@ package com.alxsshv.map_reduce;
 import java.util.List;
 
 /**
+ * Класс демонстрирует работу упрощенной реализации фреймворка MapReduce.
  * @author Alexei Shvariov
  */
 public class Main {
