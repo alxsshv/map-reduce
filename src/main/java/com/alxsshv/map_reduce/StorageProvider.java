@@ -76,10 +76,10 @@ public class StorageProvider {
         }
     }
 
-    /** Записывает в файл промужуточные результаты, полученные в ходе выполнения указанной map-задачи.
+    /** Записывает в файл промежуточные результаты, полученные в ходе выполнения указанной map-задачи.
      * @param keyValues  - список объектов класса {@link KeyValue}, полученных при выполнении map-задачи.
      * @param mapTask - map-задача {@link MapTask} при выполнении которой получены результаты, записываемые в файл.
-     * @param numberOfReduceTasks - количество reduce-задач которые должны быть выполненны в ходе MapReduce процесса. */
+     * @param numberOfReduceTasks - количество reduce-задач которые должны быть выполнены в ходе MapReduce процесса. */
     public void writeMapResults(List<KeyValue> keyValues, MapTask mapTask, int numberOfReduceTasks) {
         for (KeyValue kv : keyValues) {
             createDirectoryIfNotExist(MAP_RESULTS_DIRECTORY);
@@ -91,15 +91,15 @@ public class StorageProvider {
     }
 
     /** Вычисляет номер reduce-задачи, которая должна обрабатывать данные по указанному ключу.
-     * @param key  - ключ (слово) количество повторенийй которого в файлах будет вычисляться в reduce-задаче.
-     * @param numberOfReduceTasks - количество reduce-задач которые должны быть выполненны в ходе MapReduce процесса.
+     * @param key  - ключ (слово) количество повторений которого в файлах будет вычисляться в reduce-задаче.
+     * @param numberOfReduceTasks - количество reduce-задач которые должны быть выполнены в ходе MapReduce процесса.
      * @return возвращает строку, которая содержит номер reduce-задачи. */
     private String buildReduceTaskNumber(String key, int numberOfReduceTasks) {
         return String.valueOf( ((numberOfReduceTasks - 1) & key.hashCode()) + 1);
     }
 
     /**
-     * Метод получения из файлов с промежуточными результататами выполнения map-задач списка пар ключ-значение,
+     * Метод получения из файлов с промежуточными результатами выполнения map-задач списка пар ключ-значение,
      * которые должны обрабатываться в reduce-задаче с указанным номером.
      * @param reduceTaskNumber  - номер задачи для которой необходимо получить список пар ключ-значение.
      * @return возвращает коллекцию объектов {@link KeyValue}.
@@ -115,7 +115,7 @@ public class StorageProvider {
     }
 
     /**
-     * Метод получает список имен файлов из которых необхоидмо получить промежуточные данные
+     * Метод получает список имен файлов из которых необходимо получить промежуточные данные
      * для выполнения reduce-задачи с указанным номером.
      * @param reduceTaskNumber  - номер задачи для которой необходимо получить список фалов.
      * @return возвращает коллекцию имен файлов в которых хранятся промежуточные результаты выполнения map-задач,
@@ -131,7 +131,7 @@ public class StorageProvider {
                 .filter(name -> name.contains(REDUCE_PREFIX + reduceTaskNumber + FILE_EXTENSION)).toList();
     }
 
-    /*** Метод получения из файла с промежуточными результататами выполнения map-задач списка пар ключ-значение.
+    /*** Метод получения из файла с промежуточными результатами выполнения map-задач списка пар ключ-значение.
      * @param fileName - имя файла из которого необходимо извлечь данные.
      * @return возвращает список объектов {@link KeyValue}
      * @throws RuntimeException будет выброшено,
@@ -156,7 +156,7 @@ public class StorageProvider {
     /**
      * Метод записи результата выполнения reduce-задачи в указанный файл.
      * @param reduceResult  - результаты выполнения reduce-задачи в виде строки.
-     * @param filename - имя файла в который необходиом записать результаты выполения reduce-задачи.
+     * @param filename - имя файла в который необходимо записать результаты выполнения reduce-задачи.
      * */
     public synchronized void writeReduceResultToFile(String reduceResult, String filename) {
         String filePath = RESULT_FILE_PATH + File.separator + filename + FILE_EXTENSION;

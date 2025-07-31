@@ -11,6 +11,9 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Координатор - класс раздающий задачи для объектов класса {@link Worker} в рамках выполнения MapReduce процесса
@@ -41,10 +44,10 @@ public class Coordinator {
     private final String resultFilename;
 
     /**Конструктор с параметрами
-     * @param filenames - список имён файлов для обработки, указываается с учётом пути к файлам.
+     * @param filenames - список имён файлов для обработки, указывается с учётом пути к файлам.
      * @param resultFilename  - имя файла в который будут записаны результаты выполнения MapReduce процесса.
      * @param numberOfWorkers  - требуемое количество worker'ов.
-     * @param numberOfReduceTasks - треуемое количество reduce-задач.
+     * @param numberOfReduceTasks - требуемое количество reduce-задач.
      * @param parallelism - уровень распараллеливания задач пулом потоков;
      * */
     public Coordinator(List<String> filenames,
@@ -61,17 +64,17 @@ public class Coordinator {
             }
         }
         this.resultFilename = resultFilename;
-        this.numberOfWorkers =  numberOfWorkers > 1 ?  numberOfWorkers : filenames.size();
-        this.numberOfReduceTasks = numberOfReduceTasks > 0 ? numberOfReduceTasks : filenames.size();
+        this.numberOfWorkers =  (numberOfWorkers > 1) ?  numberOfWorkers : filenames.size();
+        this.numberOfReduceTasks = (numberOfReduceTasks > 0) ? numberOfReduceTasks : filenames.size();
         this.numberOfMapTasks = filenames.size();
-        this.pool = parallelism > 1 ? Executors.newWorkStealingPool(parallelism) : Executors.newWorkStealingPool();
+        this.pool = (parallelism > 1) ? Executors.newWorkStealingPool(parallelism) : Executors.newWorkStealingPool();
     }
 
     /**Конструктор с параметрами
-     * @param filenames - список имён файлов для обработки, указываается с учётом пути к файлам.
+     * @param filenames - список имён файлов для обработки, указывается с учётом пути к файлам.
      * @param resultFilename  - имя файла в который будут записаны результаты выполнения MapReduce процесса.
      * @param numberOfWorkers  - требуемое количество worker'ов.
-     * @param numberOfReduceTasks - треуемое количество reduce-задач.
+     * @param numberOfReduceTasks - требуемое количество reduce-задач.
      * */
     public Coordinator(List<String> filenames,
                        String resultFilename,
@@ -81,21 +84,21 @@ public class Coordinator {
     }
 
     /**Конструктор с параметрами
-     * @param filenames - список имён файлов для обработки, указываается с учётом пути к файлам.
+     * @param filenames - список имён файлов для обработки, указывается с учётом пути к файлам.
      * @param resultFilename  - имя файла в который будут записаны результаты выполнения MapReduce процесса.
      * */
     public Coordinator(List<String> filenames,
                        String resultFilename) {
         this(filenames, resultFilename,
                filenames.size(),
-                Runtime.getRuntime().availableProcessors() * 3,
+                Runtime.getRuntime().availableProcessors() * 100,
                 Runtime.getRuntime().availableProcessors());
     }
 
 
     /**Метод для запуска MapReduce процесса на выполнение.
-     * Метод очищает каталоги с генерируемыми файлами (промежуточныими и результатом выполнения)
-     * от старых данных, генерирует очереть reduce- задач и запускает worker'ы (метод call worker'а выполняется в отдельном потоке).
+     * Метод очищает каталоги с генерируемыми файлами (промежуточными и результатом выполнения)
+     * от старых данных, генерирует очередь reduce- задач и запускает worker'ы (метод call worker'а выполняется в отдельном потоке).
      * */
     public void startWork() throws InterruptedException {
         new StorageProvider().prepareStorage();
@@ -104,7 +107,7 @@ public class Coordinator {
         }
         final List<Worker> workers = new ArrayList<>();
         for (int i = 1; i <= numberOfWorkers; i++) {
-            Worker worker = new Worker(this, i);
+            Worker worker = new Worker(this);
             workers.add(worker);
         }
         log.info("Coordinator: Создано {} workers", workers.size());
@@ -112,14 +115,14 @@ public class Coordinator {
     }
 
     /**Метод выдачи задачи на выполнение Worker'ам.
-     * @return задача, реализующая интерфейс {@link Task}. Интрефейс, а не абстрактный класс т.к.
-     * в качестве реализаций используются иммутабельные record'ы.
-     * Если имеются не выполненные map-задачи кординатор возвращает по запросу одну map-задачу {@link MapTask} из очереди map-задач
+     * @return задача, реализующая интерфейс {@link Task}. Интерфейс, а не абстрактный класс т.к.
+     * в качестве реализаций используются record'ы.
+     * Если имеются не выполненные map-задачи координатор возвращает по запросу одну map-задачу {@link MapTask} из очереди map-задач
      * Если свободных map-задач нет, но некоторые из них еще выполняются,
      * возвращается задача на ожидание {@link WaitTask}.
-     * Если все map-задачи выполнены, а в очереди reduce-задач имются задачи? возвращается {@link ReduceTask}
+     * Если все map-задачи выполнены, а в очереди reduce-задач имеются задачи? возвращается {@link ReduceTask}
      * Если все map-задачи выполнены, а reduce-задач в очереди больше нет,
-     * взворащает задача на завершения работы Worker'a {@link StopTask}*/
+     * возвращает задача на завершения работы Worker'a {@link StopTask}*/
     public synchronized Task getTask() {
         if (!mapTasks.isEmpty()) {
             return mapTasks.poll();

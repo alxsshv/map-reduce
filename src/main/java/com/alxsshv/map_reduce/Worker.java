@@ -9,6 +9,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 
@@ -18,6 +19,7 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 public class Worker implements Callable<Boolean> {
+    private static final AtomicInteger ID_COUNTER = new AtomicInteger(0);
     /**Числовой идентификатор */
     private final int id;
     /** Провайдер для взаимодействия с хранилищем файлов */
@@ -27,11 +29,14 @@ public class Worker implements Callable<Boolean> {
 
     /** Конструктор с параметрами
      * @param coordinator - Координатор, который создал экземпляр worker'а.
-     * @param id - идентификатор worker'а.
+     * @throws IllegalArgumentException если не указана ссылка на координатора.
      * */
-    public Worker(Coordinator coordinator, int id) {
+    public Worker(Coordinator coordinator) {
+        if (coordinator == null) {
+            throw new IllegalArgumentException("Coordinator can not be null");
+        }
         this.coordinator = coordinator;
-        this.id = id;
+        this.id = ID_COUNTER.incrementAndGet();
         this.storageProvider = new StorageProvider();
     }
 
@@ -40,14 +45,14 @@ public class Worker implements Callable<Boolean> {
      * reduce-задачу, ожидает новой задачи или завершает работу
      * @return возвращает true, если поток успешно завершил все операции*/
     @Override
-    public Boolean call() {
+    public Boolean call() throws InterruptedException {
         log.info("Запущен worker № {}", id);
         while (true) {
             log.info("Worker {}: запросил задачу", id);
             Task task = coordinator.getTask();
             if (task == null  || task instanceof WaitTask) {
                 log.info("Worker {}: ожидаю", id);
-                Thread.yield();
+                Thread.sleep(200);
                 continue;
             }
             if (task instanceof StopTask) {
@@ -91,7 +96,7 @@ public class Worker implements Callable<Boolean> {
     }
 
 
-    /** Подсчитывает сколько раз стречается слово ключ в тексте и схораняет в {@link KeyResult} объект. */
+    /** Подсчитывает сколько раз встречается слово ключ в тексте и сохраняет в {@link KeyResult} объект. */
     public KeyResult reduce(String key, List<KeyValue> values) {
         return new KeyResult(key, values.size());
     }
